@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "postcss-normalize": "^13.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.4"
+  }
+}
