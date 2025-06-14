@@ -45,7 +45,7 @@ const Navbar = () => {
   return (
     <>
       {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 w-full bg-slate-900/90 backdrop-blur-sm shadow-lg py-4 px-6 flex justify-between items-center z-50">
+      <nav className="fixed top-0 left-0 w-full bg-slate-900/90 backdrop-blur-sm shadow-lg py-2 px-6 flex justify-between items-center z-50">
         {/* Logo */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNavigation("/")}>
           <div className="flex items-center bg-blue-600/20 px-4 py-2 rounded-lg">

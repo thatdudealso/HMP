@@ -8,6 +8,7 @@ const AGENTS = require('../config/agents');
 const EducationalHistory = require('../models/EducationalHistory');
 const { processPrompt } = require("../config/prof_agent"); // Our updated agent file with dynamic extraction
 const { Task } = require('praisonai');
+const History = require('../models/History'); // Import History model
 require("dotenv").config();
 
 const router = express.Router();
@@ -61,10 +62,16 @@ router.use("/emergency", authenticateUser);
 // **POST: Submit AI Prompt** (Legacy clinical interactions route)
 router.post("/submit", async (req, res) => {
   try {
-    const { prompt, userId, sessionId, patientInfo, clinicalExamination, vitals, isFollowUp } = req.body;
+    // Remove 'prompt' from destructuring, only use structured fields
+    const { userId, sessionId, patientInfo, clinicalExamination, vitals, presentingProblems, isFollowUp } = req.body;
     
     // Get AI response via legacy function
-    const aiResponse = await getAIResponse(prompt);
+    const aiResponse = await getAIResponse({
+      patientInfo,
+      clinicalExamination,
+      presentingProblems,
+      vitals
+    });
 
     let session;
     if (isFollowUp && sessionId) {
@@ -74,11 +81,23 @@ router.post("/submit", async (req, res) => {
         throw new Error('Session not found');
       }
       session.interactions.push({
-        question: prompt,
+        question: presentingProblems.main_complaint,
         response: aiResponse,
         type: 'followUp'
       });
       await session.save();
+      // Save follow-up in History
+      await History.create({
+        userId,
+        prompt: presentingProblems.main_complaint,
+        response: aiResponse,
+        agentType: 'senior_doctor_ai',
+        timestamp: new Date(),
+        patientInfo,
+        clinicalExamination,
+        presentingComplaints: presentingProblems,
+        type: 'followUp'
+      });
     } else {
       // Create new session
       session = new Session({
@@ -86,13 +105,26 @@ router.post("/submit", async (req, res) => {
         patientInfo,
         clinicalExamination,
         vitals,
+        presentingProblems,
         interactions: [{
-          question: prompt,
+          question: presentingProblems.main_complaint,
           response: aiResponse,
           type: 'initial'
         }]
       });
       await session.save();
+      // Save initial in History
+      await History.create({
+        userId,
+        prompt: presentingProblems.main_complaint,
+        response: aiResponse,
+        agentType: 'senior_doctor_ai',
+        timestamp: new Date(),
+        patientInfo,
+        clinicalExamination,
+        presentingComplaints: presentingProblems,
+        type: 'initial'
+      });
     }
 
     res.json({
@@ -161,7 +193,7 @@ const generateSessionId = () => {
 const callAIService = async (prompt) => {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4-mini",
       messages: [
         {
           role: "system",
@@ -202,7 +234,7 @@ const callAIService = async (prompt) => {
     console.error('OpenAI API call failed:', error);
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4-mini",
         messages: [
           {
             role: "system",

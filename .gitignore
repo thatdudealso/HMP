@@ -1,4 +1,7 @@
 node_modules
 code/server_server/.env
+<<<<<<< Updated upstream
 .env
 .env.*
+=======
+>>>>>>> Stashed changes

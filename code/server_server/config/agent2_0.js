@@ -1,9 +1,116 @@
 const OpenAI = require("openai");
 require("dotenv").config();
 
-// Initialize OpenAI with the latest SDK
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// LLM Interface
+class LLMInterface {
+    constructor(config) {
+        this.config = config;
+    }
+
+    async generateResponse(messages, options = {}) {
+        throw new Error('Method not implemented');
+    }
+
+    async generateFunctionResponse(messages, functions, options = {}) {
+        throw new Error('Method not implemented');
+    }
+}
+
+// OpenAI Implementation
+class OpenAIInterface extends LLMInterface {
+    constructor(config) {
+        super(config);
+        this.client = new OpenAI({
+            apiKey: config.apiKey
+        });
+    }
+
+    async generateResponse(messages, options = {}) {
+        const response = await this.client.chat.completions.create({
+            model: options.model || "gpt-4-mini",
+            messages,
+            temperature: options.temperature || 0.7,
+            max_tokens: options.max_tokens || 2000
+        });
+        return response.choices[0].message;
+    }
+
+    async generateFunctionResponse(messages, functions, options = {}) {
+        const response = await this.client.chat.completions.create({
+            model: options.model || "gpt-4-mini",
+            messages,
+            functions,
+            function_call: options.function_call || "auto",
+            temperature: options.temperature || 0.7
+        });
+        return response.choices[0].message;
+    }
+}
+
+// Bedrock Implementation
+class BedrockInterface extends LLMInterface {
+    constructor(config) {
+        super(config);
+        this.client = new BedrockRuntimeClient({
+            region: config.region,
+            credentials: {
+                accessKeyId: config.accessKeyId,
+                secretAccessKey: config.secretAccessKey
+            }
+        });
+    }
+
+    async generateResponse(messages, options = {}) {
+        const prompt = this._formatMessagesToPrompt(messages);
+        const command = new InvokeModelCommand({
+            modelId: options.model || "anthropic.claude-v2",
+            contentType: "application/json",
+            accept: "application/json",
+            body: JSON.stringify({
+                prompt,
+                max_tokens_to_sample: options.max_tokens || 2000,
+                temperature: options.temperature || 0.7,
+                top_k: options.top_k || 250,
+                top_p: options.top_p || 0.999,
+                stop_sequences: options.stop_sequences || ["\n\nHuman:"]
+            })
+        });
+
+        const response = await this.client.send(command);
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+        return {
+            content: responseBody.completion,
+            role: "assistant"
+        };
+    }
+
+    _formatMessagesToPrompt(messages) {
+        return messages.map(msg => {
+            if (msg.role === "system") {
+                return `\n\nHuman: ${msg.content}\n\nAssistant: I understand.`;
+            }
+            return `\n\nHuman: ${msg.content}\n\nAssistant:`;
+        }).join("");
+    }
+}
+
+// LLM Factory
+class LLMFactory {
+    static createLLM(type, config) {
+        switch (type.toLowerCase()) {
+            case 'openai':
+                return new OpenAIInterface(config);
+            case 'bedrock':
+                return new BedrockInterface(config);
+            default:
+                throw new Error(`Unsupported LLM type: ${type}`);
+        }
+    }
+}
+
+// Initialize default LLM
+const defaultLLM = LLMFactory.createLLM('openai', {
+    apiKey: process.env.OPENAI_API_KEY
 });
 
 // First, let's define our state management
@@ -390,69 +497,52 @@ const webSearch = async (query) => {
     }
 };
 
-const getAIResponse = async (prompt, conversationHistory = []) => {
+const getAIResponse = async (input, conversationHistory = [], llm = defaultLLM) => {
   try {
-    // Add null check and default values
-    const patientInfo = prompt?.patientInfo || {};
-    const clinicalExamination = prompt?.clinicalExamination || {};
-    const presentingComplaints = prompt?.presentingComplaints || {};
+    const {
+      patientInfo,
+      clinicalExamination,
+      presentingProblems,
+      vitals
+    } = input;
 
-    // Keep existing system prompt setup
     let systemPrompt = `You are an expert veterinary AI assistant analyzing a case. 
-    You have access to the following case history and should consider this context in your response.
-    
-    Please structure your response in the following format:
-    {
-      "assessment": "Comprehensive assessment of the patient's condition",
-      "clinicalFindings": [
-        {
-          "system": "Body system name",
-          "observation": "What was observed",
-          "details": "Additional details"
-        }
-      ],
-      "provisionalDiagnosis": [
-        {
-          "condition": "Name of condition",
-          "likelihood": "Probability assessment",
-          "reasoning": "Clinical reasoning"
-        }
-      ],
-      "diagnosticTests": [
-        {
-          "name": "Test name",
-          "rationale": "Why this test is needed",
-          "priority": "Urgency level"
-        }
-      ],
-      "treatmentPlan": {
-        "medications": [
-          {
-            "name": "Medication name",
-            "dosage": "Dosage information",
-            "frequency": "How often to administer",
-            "duration": "How long to continue"
-          }
-        ],
-        "procedures": ["List of recommended procedures"],
-        "nursing": ["Nursing care instructions"],
-        "dietary": "Dietary recommendations"
-      },
-      "followUp": {
-        "timing": "When to schedule next visit",
-        "monitoring": ["Parameters to monitor"],
-        "warningSignals": ["Signs that require immediate attention"]
-      }
-    }`;
+Please provide a comprehensive assessment based on the following information:
 
-    // Keep existing context handling
-    if (patientInfo.name) {
-      systemPrompt += `\n\nPATIENT PROFILE:
-Name: ${patientInfo.name}
-Species: ${patientInfo.species}
-Age: ${patientInfo.age}
-Current Condition: ${presentingComplaints?.mainComplaint || 'Not specified'}`;
-    }
+PATIENT INFORMATION:
+- Name: ${patientInfo.name}
+- Species: ${patientInfo.species}
+- Breed: ${patientInfo.breed || 'Not specified'}
+- Age: ${patientInfo.age}
+- Weight: ${patientInfo.weight || 'Not specified'}
+- Sex: ${patientInfo.sex || 'Not specified'}
+- Reproductive Status: ${patientInfo.reproductive_status || 'Not specified'}
+
+VITAL SIGNS:
+- Temperature: ${vitals.temperature || 'Not recorded'}
+- Heart Rate: ${vitals.heartRate || 'Not recorded'}
+- Respiratory Rate: ${vitals.respiratoryRate || 'Not recorded'}
+
+CLINICAL EXAMINATION:
+- General Appearance: ${clinicalExamination.general_appearance || 'Not recorded'}
+- Hydration Status: ${clinicalExamination.hydration_status || 'Not recorded'}
+- Other Findings: ${clinicalExamination.other_findings || 'None recorded'}
+
+PRESENTING PROBLEMS:
+- Main Complaint: ${presentingProblems.main_complaint}
+- Duration: ${presentingProblems.duration || 'Not specified'}
+- Progression: ${presentingProblems.progression || 'Not specified'}
+- Previous Treatments: ${presentingProblems.previous_treatments || 'None recorded'}
+- Diet Changes: ${presentingProblems.diet_changes || 'None recorded'}
+- Environment Changes: ${presentingProblems.environment_changes || 'None recorded'}
+
+Please provide a structured response including:
+1. Assessment
+2. Clinical Findings
+3. Provisional Diagnosis
+4. Further Diagnostic Tests
+5. Treatment Plan
+6. Follow-up Recommendations`;
 
     // Keep conversation history handling
     if (conversationHistory && conversationHistory.length > 0) {
@@ -462,128 +552,25 @@ Current Condition: ${presentingComplaints?.mainComplaint || 'Not specified'}`;
       });
     }
 
-    // Keep existing prompt formatting
-    let userPrompt = '';
-    if (presentingComplaints?.followUpQuestion) {
-      userPrompt = `Based on the previous context and initial assessment, please address the following follow-up question:
-
-${presentingComplaints.followUpQuestion}
-
-Please maintain the same structured format in your response.`;
-    } else {
-      userPrompt = `Please provide a comprehensive veterinary assessment for the following case:
-      
-Main Complaint: ${presentingComplaints?.mainComplaint || 'Not specified'}
-Duration: ${presentingComplaints?.duration || 'Not specified'}
-Progression: ${presentingComplaints?.progression || 'Not specified'}
-Previous Treatments: ${presentingComplaints?.previousTreatments || 'None'}
-Clinical Examination: ${clinicalExamination?.general_appearance || 'Not specified'}
-Additional Notes: ${presentingComplaints?.additionalNotes || 'None'}`;
-    }
-
-    // Add web research capability when needed
-    if (prompt.requiresResearch) {
-        const researchState = await AGENTS.web_researcher.researchTopic(
-            new VetState(),
-            prompt.researchQuery
-        );
-        
-        // Add research findings to the system prompt
-        if (researchState.results.web_research) {
-            systemPrompt += "\n\nRELEVANT RESEARCH FINDINGS:";
-            researchState.results.web_research.findings.forEach(finding => {
-                systemPrompt += `\n\nSource: ${finding.title}\nURL: ${finding.url}\nKey Information: ${finding.snippet}`;
-            });
-        }
-    }
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ];
-
-    // Define the search function for GPT
-    const functions = [
+    const completion = await llm.generateResponse(
+      [
         {
-            name: "search_web",
-            description: "Search the web for current information",
-            parameters: {
-                type: "object",
-                properties: {
-                    query: {
-                        type: "string",
-                        description: "The search query"
-                    }
-                },
-                required: ["query"]
-            }
+          role: "system",
+          content: systemPrompt
         }
-    ];
-
-    // First, ask GPT if it needs to search
-    const searchCheckResponse = await openai.chat.completions.create({
+      ],
+      {
         model: "gpt-4",
-        messages: messages,
-        functions,
-        function_call: "auto",
-        temperature: 0.7
-    });
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: "json_object" }
+      }
+    );
 
-    let finalResponse;
-    const responseMessage = searchCheckResponse.choices[0].message;
-
-    // If GPT wants to search the web
-    if (responseMessage.function_call) {
-        const functionArgs = JSON.parse(responseMessage.function_call.arguments);
-        const searchResults = await webSearch(functionArgs.query);
-
-        // Add search results to the conversation
-        messages.push(responseMessage);
-        messages.push({
-            role: "function",
-            name: "search_web",
-            content: JSON.stringify(searchResults)
-        });
-
-        // Get final response with search results
-        finalResponse = await openai.chat.completions.create({
-            model: "gpt-4",
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 2000
-        });
-    } else {
-        finalResponse = searchCheckResponse;
-    }
-
-    const aiResponse = finalResponse.choices[0].message.content;
-    try {
-      const parsedResponse = JSON.parse(aiResponse);
-      return parsedResponse;
-    } catch (error) {
-      console.error('Error parsing AI response:', error);
-      // If parsing fails, structure the raw response in the new format
-      return {
-        assessment: aiResponse,
-        clinicalFindings: [],
-        provisionalDiagnosis: [],
-        diagnosticTests: [],
-        treatmentPlan: {
-          medications: [],
-          procedures: [],
-          nursing: [],
-          dietary: ""
-        },
-        followUp: {
-          timing: "",
-          monitoring: [],
-          warningSignals: []
-        }
-      };
-    }
+    return completion.content || completion.message?.content;
   } catch (error) {
     console.error('Error in getAIResponse:', error);
-    throw new Error(`Failed to get AI response: ${error.message}`);
+    throw error;
   }
 };
 
@@ -595,5 +582,7 @@ module.exports = {
     DiagnosisType,
     TreatmentResponse,
     generatePrompt,
-    getAIResponse
+    getAIResponse,
+    LLMFactory,
+    LLMInterface
 };

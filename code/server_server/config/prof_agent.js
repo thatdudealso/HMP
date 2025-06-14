@@ -305,7 +305,7 @@ Original query: "${sanitizedInput}"`;
   try {
     // Using OpenAI's API directly
     const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }

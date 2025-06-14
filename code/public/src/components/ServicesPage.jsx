@@ -99,9 +99,14 @@ const ServicesPage = () => {
               <button className="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-lg font-semibold">
                 Start Free Trial
               </button>
-              <button className="border border-blue-400 hover:bg-blue-800 px-8 py-3 rounded-lg font-semibold">
+              <a
+                href="https://youtu.be/2QBfOn1lb4E"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-blue-400 hover:bg-blue-800 px-8 py-3 rounded-lg font-semibold inline-block"
+              >
                 Watch Demo
-              </button>
+              </a>
             </div>
           </div>
         </header>

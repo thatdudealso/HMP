@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardNavbar from "./DashboardNavbar";
+import DashboardNavbar from "../components/DashboardNavbar";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 
 const DoctorDashboard = () => {
@@ -55,6 +55,7 @@ const DoctorDashboard = () => {
     environment_changes: ""
   });
   const [history, setHistory] = useState([]);
+  const [followUpPrompt, setFollowUpPrompt] = useState("");
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("user"));
@@ -462,13 +463,15 @@ const DoctorDashboard = () => {
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = sessions.slice(indexOfFirstItem, indexOfLastItem);
+  // Sort sessions by createdAt descending (most recent first)
+  const sortedSessions = [...sessions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const currentItems = sortedSessions.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(sessions.length / itemsPerPage);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex flex-col">
       <DashboardNavbar />
-      <div className="flex flex-col items-center p-6 pt-14 w-full max-w-6xl mx-auto">
+      <div className="flex flex-col items-center p-6 pt-20 w-full max-w-6xl mx-auto">
         <div className="w-full flex justify-between items-center mb-6">
           <h1 className="text-4xl font-bold">Doctor Dashboard</h1>
           <button
@@ -549,66 +552,6 @@ const DoctorDashboard = () => {
                   </div>
                 </div>
 
-                {/* Vitals */}
-                <div className="mb-6">
-                  <h3 className="text-xl font-semibold mb-3">Vital Signs (Optional)</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <input
-                      type="text"
-                      placeholder="Temperature (°F) - Optional"
-                      value={vitals.temperature}
-                      onChange={(e) => setVitals({...vitals, temperature: e.target.value})}
-                      className="p-2 rounded text-gray-900"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Heart Rate (bpm) - Optional"
-                      value={vitals.heartRate}
-                      onChange={(e) => setVitals({...vitals, heartRate: e.target.value})}
-                      className="p-2 rounded text-gray-900"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Respiratory Rate (bpm) - Optional"
-                      value={vitals.respiratoryRate}
-                      onChange={(e) => setVitals({...vitals, respiratoryRate: e.target.value})}
-                      className="p-2 rounded text-gray-900"
-                    />
-                  </div>
-                </div>
-
-                {/* Clinical Examination */}
-                <div className="mb-6">
-                  <h3 className="text-xl font-semibold mb-3">Clinical Examination</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <textarea
-                      placeholder="General Appearance"
-                      value={clinicalExam.general_appearance}
-                      onChange={(e) => setClinicalExam({...clinicalExam, general_appearance: e.target.value})}
-                      className="p-2 rounded text-gray-900"
-                      rows="2"
-                    />
-                    <select
-                      value={clinicalExam.hydration_status}
-                      onChange={(e) => setClinicalExam({...clinicalExam, hydration_status: e.target.value})}
-                      className="p-2 rounded text-gray-900"
-                    >
-                      <option value="">Hydration Status</option>
-                      <option value="normal">Normal</option>
-                      <option value="mild">Mild Dehydration</option>
-                      <option value="moderate">Moderate Dehydration</option>
-                      <option value="severe">Severe Dehydration</option>
-                    </select>
-                    <textarea
-                      placeholder="Other Clinical Findings"
-                      value={clinicalExam.other_findings}
-                      onChange={(e) => setClinicalExam({...clinicalExam, other_findings: e.target.value})}
-                      className="p-2 rounded text-gray-900"
-                      rows="2"
-                    />
-                  </div>
-                </div>
-
                 {/* Presenting Problems */}
                 <div className="mb-6">
                   <h3 className="text-xl font-semibold mb-3">Presenting Problems</h3>
@@ -648,28 +591,70 @@ const DoctorDashboard = () => {
                     />
                   </div>
                 </div>
+
+                {/* Clinical Examination */}
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold mb-3">Clinical Examination</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <textarea
+                      placeholder="Clinical Findings"
+                      value={clinicalExam.general_appearance}
+                      onChange={(e) => setClinicalExam({...clinicalExam, general_appearance: e.target.value})}
+                      className="p-2 rounded text-gray-900"
+                      rows="2"
+                    />
+                    <select
+                      value={clinicalExam.hydration_status}
+                      onChange={(e) => setClinicalExam({...clinicalExam, hydration_status: e.target.value})}
+                      className="p-2 rounded text-gray-900"
+                    >
+                      <option value="">Hydration Status</option>
+                      <option value="normal">Normal</option>
+                      <option value="mild">Mild Dehydration</option>
+                      <option value="moderate">Moderate Dehydration</option>
+                      <option value="severe">Severe Dehydration</option>
+                    </select>
+                    <textarea
+                      placeholder="Other Clinical Findings"
+                      value={clinicalExam.other_findings}
+                      onChange={(e) => setClinicalExam({...clinicalExam, other_findings: e.target.value})}
+                      className="p-2 rounded text-gray-900"
+                      rows="2"
+                    />
+                  </div>
+                </div>
+
+                {/* Vitals */}
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold mb-3">Vital Signs (Optional)</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Temperature (°F) - Optional"
+                      value={vitals.temperature}
+                      onChange={(e) => setVitals({...vitals, temperature: e.target.value})}
+                      className="p-2 rounded text-gray-900"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Heart Rate (bpm) - Optional"
+                      value={vitals.heartRate}
+                      onChange={(e) => setVitals({...vitals, heartRate: e.target.value})}
+                      className="p-2 rounded text-gray-900"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Respiratory Rate (bpm) - Optional"
+                      value={vitals.respiratoryRate}
+                      onChange={(e) => setVitals({...vitals, respiratoryRate: e.target.value})}
+                      className="p-2 rounded text-gray-900"
+                    />
+                  </div>
+                </div>
               </>
             )}
 
             <form onSubmit={handleSubmit} className="mb-8 w-full">
-              <div className="mb-4">
-                <h4 className="text-white mb-2">
-                  {isNewChat ? "Enter Presenting Complaints" : "Enter Follow-up Questions"}
-                </h4>
-                <textarea
-                  className="w-full bg-white border border-gray-300 p-4 rounded-lg text-gray-900 placeholder-gray-500 mb-4 shadow-md focus:ring-2 focus:ring-indigo-400"
-                  placeholder={
-                    isNewChat 
-                      ? "Enter presenting complaints..." 
-                      : "Ask follow-up questions about diagnosis, treatment, or any specific concerns..."
-                  }
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  rows="4"
-                />
-              </div>
-              
               <div className="flex space-x-4 justify-center w-full mb-4">
                 <button
                   type="button"
@@ -702,6 +687,39 @@ const DoctorDashboard = () => {
                 </button>
               </div>
             </form>
+
+            {/* Follow-Up Prompt Box */}
+            {!isNewChat && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!followUpPrompt.trim()) return;
+                  setPrompt(followUpPrompt); // Use the existing prompt logic
+                  setFollowUpPrompt("");     // Clear the follow-up box
+                  handleSubmit(e);           // Submit as follow-up
+                }}
+                className="mb-4 w-full"
+              >
+                <label className="block mb-2 text-lg font-semibold text-white">
+                  Ask a follow-up question
+                </label>
+                <textarea
+                  value={followUpPrompt}
+                  onChange={(e) => setFollowUpPrompt(e.target.value)}
+                  placeholder="Type your follow-up question here..."
+                  rows={4}
+                  className="w-full p-3 rounded-lg resize-y text-gray-900 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  style={{ minHeight: "80px", maxHeight: "200px" }}
+                />
+                <button
+                  type="submit"
+                  className="mt-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition"
+                  disabled={loading}
+                >
+                  {loading ? "Processing..." : "Send"}
+                </button>
+              </form>
+            )}
 
             {/* Response Section */}
             {(loading || response) && (

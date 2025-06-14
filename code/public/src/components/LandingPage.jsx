@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from './Navbar'; // ✅ Import Navbar Component
+import Footer from './Footer'; // Add Footer import
 
 // Create a carousel component for rotating between SVG files
 const ImageCarousel = () => {
@@ -182,9 +183,14 @@ const LandingPage = () => {
                 >
                   Learn More
                 </Link>
-                <button className="px-8 py-4 bg-slate-800 rounded-lg font-semibold hover:bg-slate-700 transition duration-300 shadow-lg flex items-center justify-center">
+                <a
+                  href="https://youtu.be/2QBfOn1lb4E"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-8 py-4 bg-slate-800 rounded-lg font-semibold hover:bg-slate-700 transition duration-300 shadow-lg flex items-center justify-center"
+                >
                   ▶ Watch Demo
-                </button>
+                </a>
               </div>
             </div>
             <div className="relative hidden md:block h-[500px]">
@@ -241,62 +247,8 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 py-12 px-6">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-blue-400">Resources</h4>
-            <ul className="space-y-2 text-gray-300">
-              <li><button className="hover:text-blue-400">Blog</button></li>
-              <li><button className="hover:text-blue-400">Case Studies</button></li>
-              <li><button className="hover:text-blue-400">Research Papers</button></li>
-            </ul>
-          </div>
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-blue-400">Support</h4>
-            <ul className="space-y-2 text-gray-300">
-              <li><button className="hover:text-blue-400">Documentation</button></li>
-              <li><button className="hover:text-blue-400">Training</button></li>
-              <li><button className="hover:text-blue-400">FAQs</button></li>
-            </ul>
-          </div>
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-blue-400">Company</h4>
-            <ul className="space-y-2 text-gray-300">
-              <li><button className="hover:text-blue-400">About</button></li>
-              <li><button className="hover:text-blue-400">Careers</button></li>
-              <li><button className="hover:text-blue-400">Press</button></li>
-            </ul>
-          </div>
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-blue-400">Newsletter</h4>
-            <p className="text-gray-300">Stay updated with latest veterinary AI developments</p>
-            <form onSubmit={handleSubscribe} className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-white flex-grow"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition duration-300"
-                >
-                  Subscribe
-                </button>
-              </div>
-              {subscribeStatus && (
-                <p className={`text-sm ${subscribeStatus.includes('Error') ? 'text-red-400' : 'text-green-400'}`}>
-                  {subscribeStatus}
-                </p>
-              )}
-            </form>
-          </div>
-        </div>
-      </footer>
+      {/* Replace the old footer with the Footer component */}
+      <Footer />
     </div>
   );
 };
